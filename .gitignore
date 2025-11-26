@@ -52,3 +52,25 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# VS Code
+.vscode/
+.vs/
+
+# Environment variables (IMPORTANT!)
+.env
+.env.local
+.env.production
+
+# MongoDB and MQTT data
+mosquitto/data/*
+!mosquitto/data/.gitkeep
+mosquitto/log/*
+!mosquitto/log/.gitkeep
+
+# Docker override
+docker-compose.override.yml
+
+# OS specific
+.DS_Store
+Thumbs.db

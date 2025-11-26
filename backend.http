@@ -1,6 +1,73 @@
-@backend_HostAddress = http://localhost:5240
+@backend_HostAddress = http://localhost:5000
 
-GET {{backend_HostAddress}}/weatherforecast/
+### Pobierz wszystkie odczyty czujników (z paginacją)
+GET {{backend_HostAddress}}/api/v1/sensors?PageNumber=1&PageSize=10
+Accept: application/json
+
+###
+
+### Pobierz odczyty z filtrowaniem po typie czujnika
+GET {{backend_HostAddress}}/api/v1/sensors?SensorType=temperature&PageNumber=1&PageSize=10
+Accept: application/json
+
+###
+
+### Pobierz odczyty z sortowaniem
+GET {{backend_HostAddress}}/api/v1/sensors?SortBy=Timestamp&SortDescending=true&PageNumber=1&PageSize=10
+Accept: application/json
+
+###
+
+### Pobierz odczyt po ID (zastąp {id} prawdziwym ID)
+GET {{backend_HostAddress}}/api/v1/sensors/{id}
+Accept: application/json
+
+###
+
+### Pobierz unikalne typy czujników
+GET {{backend_HostAddress}}/api/v1/sensors/sensor-types
+Accept: application/json
+
+###
+
+### Pobierz unikalne instancje czujników
+GET {{backend_HostAddress}}/api/v1/sensors/sensor-instances
+Accept: application/json
+
+###
+
+### Pobierz instancje dla konkretnego typu czujnika
+GET {{backend_HostAddress}}/api/v1/sensors/sensor-instances?sensorType=temperature
+Accept: application/json
+
+###
+
+### Pobierz ostatnie 10 odczytów dla instancji czujnika
+GET {{backend_HostAddress}}/api/v1/sensors/last/sensor_001?count=10
+Accept: application/json
+
+###
+
+### Pobierz średnią z ostatnich 100 odczytów
+GET {{backend_HostAddress}}/api/v1/sensors/average/sensor_001?count=100
+Accept: application/json
+
+###
+
+### Eksport do CSV
+GET {{backend_HostAddress}}/api/v1/sensors/export/csv?SensorType=temperature
+Accept: text/csv
+
+###
+
+### Eksport do JSON
+GET {{backend_HostAddress}}/api/v1/sensors/export/json
+Accept: application/json
+
+###
+
+### Usuń wszystkie odczyty (UWAGA: tylko do testowania!)
+DELETE {{backend_HostAddress}}/api/v1/sensors/all
 Accept: application/json
 
 ###
