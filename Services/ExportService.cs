@@ -27,8 +27,7 @@ public class ExportService : IExportService
             x.SensorInstanceId,
             x.Value,
             x.Unit,
-            Timestamp = x.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
-            x.Location
+            Timestamp = x.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")
         });
 
         csvWriter.WriteRecords(exportData);
@@ -44,8 +43,7 @@ public class ExportService : IExportService
             x.SensorInstanceId,
             x.Value,
             x.Unit,
-            x.Timestamp,
-            x.Location
+            x.Timestamp
         });
 
         var jsonOptions = new JsonSerializerOptions

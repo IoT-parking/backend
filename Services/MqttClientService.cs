@@ -4,6 +4,8 @@ using backend.Configuration;
 using backend.DTOs;
 using backend.Models;
 using backend.Repositories;
+using backend.Hubs;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 using MQTTnet;
 using MQTTnet.Client;
@@ -18,16 +20,19 @@ public class MqttClientService : BackgroundService
     private readonly ILogger<MqttClientService> _logger;
     private readonly MqttSettings _mqttSettings;
     private readonly ISensorReadingRepository _repository;
+    private readonly IHubContext<SensorHub> _hubContext;
     private IMqttClient? _mqttClient;
 
     public MqttClientService(
         ILogger<MqttClientService> logger,
         IOptions<MqttSettings> mqttSettings,
-        ISensorReadingRepository repository)
+        ISensorReadingRepository repository,
+        IHubContext<SensorHub> hubContext)
     {
         _logger = logger;
         _mqttSettings = mqttSettings.Value;
         _repository = repository;
+        _hubContext = hubContext;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -148,8 +153,7 @@ public class MqttClientService : BackgroundService
                 SensorInstanceId = sensorInstanceId,
                 Value = value,
                 Unit = unit,
-                Timestamp = DateTime.UtcNow,
-                Location = null
+                Timestamp = DateTime.UtcNow
             };
 
             // Save to database
@@ -161,6 +165,18 @@ public class MqttClientService : BackgroundService
                 sensorReading.Value,
                 sensorReading.Unit
             );
+
+            // Broadcast to all connected SignalR clients
+            await _hubContext.Clients.All.SendAsync("ReceiveSensorReading", new
+            {
+                sensorType = sensorReading.SensorType,
+                sensorInstanceId = sensorReading.SensorInstanceId,
+                value = sensorReading.Value,
+                unit = sensorReading.Unit,
+                timestamp = sensorReading.Timestamp
+            });
+            
+            _logger.LogDebug("Broadcasted sensor reading to SignalR clients");
         }
         catch (Exception ex)
         {

@@ -46,10 +46,4 @@ public class SensorReading
     [BsonRequired]
     [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
     public DateTime Timestamp { get; set; }
-
-    /// <summary>
-    /// Sensor location (optional)
-    /// </summary>
-    [BsonElement("location")]
-    public string? Location { get; set; }
 }
