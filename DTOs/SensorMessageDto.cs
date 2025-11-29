@@ -10,5 +10,4 @@ public class SensorMessageDto
     public double Value { get; set; }
     public string Unit { get; set; } = string.Empty;
     public DateTime? Timestamp { get; set; }
-    public string? Location { get; set; }
 }

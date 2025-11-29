@@ -44,8 +44,7 @@ public class SensorReadingsController : ControllerBase
                 SensorInstanceId = x.SensorInstanceId,
                 Value = x.Value,
                 Unit = x.Unit,
-                Timestamp = x.Timestamp,
-                Location = x.Location
+                Timestamp = x.Timestamp
             });
 
             return Ok(new PagedResponse<SensorReadingDto>
@@ -85,8 +84,7 @@ public class SensorReadingsController : ControllerBase
                 SensorInstanceId = reading.SensorInstanceId,
                 Value = reading.Value,
                 Unit = reading.Unit,
-                Timestamp = reading.Timestamp,
-                Location = reading.Location
+                Timestamp = reading.Timestamp
             };
 
             return Ok(dto);
@@ -208,8 +206,7 @@ public class SensorReadingsController : ControllerBase
                 SensorInstanceId = x.SensorInstanceId,
                 Value = x.Value,
                 Unit = x.Unit,
-                Timestamp = x.Timestamp,
-                Location = x.Location
+                Timestamp = x.Timestamp
             });
 
             return Ok(dtos);
