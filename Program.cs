@@ -1,6 +1,7 @@
 using backend.Configuration;
 using backend.Repositories;
 using backend.Services;
+using backend.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,13 +71,16 @@ builder.Services.AddHostedService<MqttClientService>();
 
 builder.Services.AddControllers();
 
+builder.Services.AddSignalR();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins("http://localhost:5173", "http://localhost:5174", "http://localhost:3000")
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials();
     });
 });
 
@@ -127,6 +131,7 @@ app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<SensorHub>("/sensorHub");
 
 app.MapGet("/health", () => Results.Ok(new 
 { 
