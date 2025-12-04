@@ -21,18 +21,21 @@ public class MqttClientService : BackgroundService
     private readonly MqttSettings _mqttSettings;
     private readonly ISensorReadingRepository _repository;
     private readonly IHubContext<SensorHub> _hubContext;
+    private readonly BlockchainService _blockchainService;
     private IMqttClient? _mqttClient;
 
     public MqttClientService(
         ILogger<MqttClientService> logger,
         IOptions<MqttSettings> mqttSettings,
         ISensorReadingRepository repository,
-        IHubContext<SensorHub> hubContext)
+        IHubContext<SensorHub> hubContext,
+        BlockchainService blockchainService)
     {
         _logger = logger;
         _mqttSettings = mqttSettings.Value;
         _repository = repository;
         _hubContext = hubContext;
+        _blockchainService = blockchainService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -177,6 +180,8 @@ public class MqttClientService : BackgroundService
             });
             
             _logger.LogDebug("Broadcasted sensor reading to SignalR clients");
+            _logger.LogInformation($"Inicjowanie nagrody blockchain dla {sensorInstanceId}...");
+            _ = _blockchainService.RewardSensorAsync(sensorInstanceId);
         }
         catch (Exception ex)
         {
