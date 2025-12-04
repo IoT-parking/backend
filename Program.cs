@@ -71,6 +71,8 @@ builder.Services.AddHostedService<MqttClientService>();
 
 builder.Services.AddControllers();
 
+builder.Services.AddSingleton<BlockchainService>();
+
 builder.Services.AddSignalR();
 
 builder.Services.AddCors(options =>
