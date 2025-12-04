@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using System.Numerics;
 using IoTParking.Blockchain;
 using IoTParking.Blockchain.SensorToken;
+using IoTParking.Blockchain.SensorToken.ContractDefinition;
 using Nethereum.Hex.HexConvertors.Extensions;
 
 namespace backend.Services;
@@ -11,9 +12,10 @@ namespace backend.Services;
 public class BlockchainService
 {
     private readonly ILogger<BlockchainService> _logger;
-    private readonly Web3 _web3;
+    private readonly IConfiguration _config;
+    private Web3? _web3;
     private SensorTokenService? _tokenService;
-    private readonly Account _account;
+    private Account? _account;
     
     private readonly Dictionary<string, string> _sensorWallets = new()
     {
@@ -38,25 +40,37 @@ public class BlockchainService
     public BlockchainService(ILogger<BlockchainService> logger, IConfiguration config)
     {
         _logger = logger;
-        
+        _config = config;
+    }
+
+    public async Task InitializeAsync()
+    {
         try
         {
-            var rpcUrl = config["Blockchain:RpcUrl"] ?? "http://blockchain:8545";
-            var privateKey = config["Blockchain:AdminPrivateKey"];
-            var contractAddress = config["Blockchain:ContractAddress"];
-            var chainId = int.Parse(config["Blockchain:ChainId"] ?? "31337");
-
-            if (string.IsNullOrEmpty(privateKey) || string.IsNullOrEmpty(contractAddress))
-            {
-                _logger.LogWarning("[BLOCKCHAIN] Missing key or contract address configuration. Service disabled.");
-                return;
-            }
+            var rpcUrl = _config["Blockchain:RpcUrl"] ?? "http://blockchain:8545";
+            // Default key for Anvil/Foundry account 0
+            var privateKey = _config["Blockchain:AdminPrivateKey"] ?? "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"; 
+            var contractAddress = _config["Blockchain:ContractAddress"];
+            var chainId = int.Parse(_config["Blockchain:ChainId"] ?? "31337");
 
             _account = new Account(privateKey, chainId);
             _web3 = new Web3(_account, rpcUrl);
-            
-            _tokenService = new SensorTokenService(_web3, contractAddress);
 
+            // Check if we need to deploy
+            if (string.IsNullOrEmpty(contractAddress))
+            {
+                _logger.LogInformation("[BLOCKCHAIN] No contract address configured. Deploying new contract...");
+                var deployment = new SensorTokenDeployment
+                {
+                    InitialOwner = _account.Address
+                };
+                
+                var receipt = await SensorTokenService.DeployContractAndWaitForReceiptAsync(_web3, deployment);
+                contractAddress = receipt.ContractAddress;
+                _logger.LogInformation($"[BLOCKCHAIN] Contract deployed at: {contractAddress}");
+            }
+
+            _tokenService = new SensorTokenService(_web3, contractAddress);
             _logger.LogInformation($"[BLOCKCHAIN] Initialized for contract: {contractAddress}");
         }
         catch (Exception ex)
@@ -74,7 +88,11 @@ public class BlockchainService
 
     public async Task RewardSensorAsync(string sensorInstanceId)
     {
-        if (_tokenService == null) return;
+        if (_tokenService == null) 
+        {
+            _logger.LogWarning("[BLOCKCHAIN] Service not initialized. Cannot reward sensor.");
+            return;
+        }
 
         var walletAddress = GetWalletForSensor(sensorInstanceId);
         
@@ -122,5 +140,15 @@ public class BlockchainService
             _logger.LogError(ex, $"[BLOCKCHAIN] Error while fetching balance for {sensorInstanceId}");
             return 0;
         }
+    }
+
+    public async Task<Dictionary<string, decimal>> GetAllBalancesAsync()
+    {
+        var balances = new Dictionary<string, decimal>();
+        foreach (var sensorId in _sensorWallets.Keys)
+        {
+            balances[sensorId] = await GetBalanceAsync(sensorId);
+        }
+        return balances;
     }
 }
