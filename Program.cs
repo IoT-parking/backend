@@ -144,11 +144,4 @@ app.MapGet("/health", () => Results.Ok(new
 .WithName("HealthCheck")
 .WithTags("Health");
 
-// Initialize Blockchain Service
-var blockchainService = app.Services.GetService<BlockchainService>();
-if (blockchainService != null)
-{
-    await blockchainService.InitializeAsync();
-}
-
 app.Run();

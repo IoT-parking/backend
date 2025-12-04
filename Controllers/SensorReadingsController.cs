@@ -134,7 +134,6 @@ public class SensorReadingsController : ControllerBase
     {
         try
         {
-            // Get all data without pagination for export
             parameters.PageSize = int.MaxValue;
             parameters.PageNumber = 1;
 
@@ -276,12 +275,13 @@ public class SensorReadingsController : ControllerBase
     {
         try
         {
+            // 1. Pobieramy unikalne ID sensorów z bazy MongoDB
             var sensorIds = await _repository.GetUniqueSensorInstancesAsync();
 
+            // 2. Dla każdego sensora odpytujemy Blockchain o balans
             var tasks = sensorIds.Select(async sensorId =>
             {
                 var wallet = _blockchainService.GetWalletForSensor(sensorId);
-
                 var balance = await _blockchainService.GetBalanceAsync(sensorId);
 
                 return new SensorStatusDto
@@ -291,6 +291,7 @@ public class SensorReadingsController : ControllerBase
                     Tokens = balance
                 };
             });
+
             var result = await Task.WhenAll(tasks);
 
             return Ok(result);
