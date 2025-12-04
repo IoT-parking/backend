@@ -275,10 +275,10 @@ public class SensorReadingsController : ControllerBase
     {
         try
         {
-            // 1. Pobieramy unikalne ID sensorów z bazy MongoDB
+            // Unique sensor IDs from the database
             var sensorIds = await _repository.GetUniqueSensorInstancesAsync();
 
-            // 2. Dla każdego sensora odpytujemy Blockchain o balans
+            // For each sensor, query the Blockchain for the balance
             var tasks = sensorIds.Select(async sensorId =>
             {
                 var wallet = _blockchainService.GetWalletForSensor(sensorId);

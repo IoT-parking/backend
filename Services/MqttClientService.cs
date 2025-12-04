@@ -144,10 +144,10 @@ public class MqttClientService : BackgroundService
                 Timestamp = DateTime.UtcNow
             };
 
-            // 1. Zapisz do MongoDB
+            // Save to MongoDB
             await _repository.AddAsync(sensorReading);
             
-            // 2. Wyślij przez SignalR do Frontendu (Live Data)
+            // Notify via SignalR
             await _hubContext.Clients.All.SendAsync("ReceiveSensorReading", new
             {
                 sensorType = sensorReading.SensorType,
@@ -156,9 +156,8 @@ public class MqttClientService : BackgroundService
                 unit = sensorReading.Unit,
                 timestamp = sensorReading.Timestamp
             });
-            
-            // 3. BLOCKCHAIN REWARD TRIGGER
-            // Używamy wzorca "Fire and Forget" (_ = ...), aby nie blokować wątku MQTT oczekiwaniem na Blockchain
+
+            // We use the "Fire and Forget" pattern (_ = ...), so we don't block the MQTT thread waiting for the Blockchain
             _logger.LogInformation($"[MqttService] Triggering Blockchain Reward for: {sensorInstanceId}");
             
             _ = Task.Run(async () => 

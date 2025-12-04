@@ -10,14 +10,15 @@ namespace backend.Services;
 public class BlockchainService
 {
     private readonly Web3 _web3;
-    // Adres deterministyczny dla Anvil (Account #0, Nonce #0)
+
+    // Deterministic address for Anvil (Account #0, Nonce #0)
     private readonly string _contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
     private readonly string _adminPrivateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
     
     private readonly ILogger<BlockchainService> _logger;
     private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
     
-    // Flaga blokująca transakcje do momentu wdrożenia kontraktu
+    // Flag blocking transactions until the contract is deployed
     private volatile bool _isContractReady = false;
 
     public BlockchainService(IConfiguration configuration, ILogger<BlockchainService> logger)
@@ -27,15 +28,15 @@ public class BlockchainService
         var account = new Account(_adminPrivateKey);
         _web3 = new Web3(account, rpcUrl);
 
-        // Uruchom monitorowanie dostępności kontraktu w tle
+        // Start monitoring contract availability in the background
         Task.Run(WaitForContractDeployment);
     }
 
     private async Task WaitForContractDeployment()
     {
-        _logger.LogInformation("Oczekiwanie na wdrożenie Smart Contractu...");
+        _logger.LogInformation("Waiting for Smart Contract deployment...");
         
-        // Próbuj przez 60 sekund
+        // Try for 60 seconds
         for (int i = 0; i < 30; i++)
         {
             try 
@@ -44,19 +45,19 @@ public class BlockchainService
                 if (code != "0x")
                 {
                     _isContractReady = true;
-                    _logger.LogInformation($"[BLOCKCHAIN READY] Kontrakt wykryty pod adresem {_contractAddress}. Odblokowywanie transakcji.");
+                    _logger.LogInformation($"[BLOCKCHAIN READY] Contract detected at address {_contractAddress}. Unlocking transactions.");
                     return;
                 }
             }
             catch
             {
-                // Ignoruj błędy połączenia podczas startu kontenera
+                // Ignore connection errors during container startup
             }
             
-            await Task.Delay(2000); // Sprawdzaj co 2 sekundy
+            await Task.Delay(2000); // Check every 2 seconds
         }
         
-        _logger.LogError("[BLOCKCHAIN TIMEOUT] Kontrakt nie został wykryty po 60 sekundach. Sprawdź kontener blockchain.");
+        _logger.LogError("[BLOCKCHAIN TIMEOUT] Contract was not detected after 60 seconds. Check the blockchain container.");
     }
 
     public string GetWalletForSensor(string sensorId)
@@ -68,7 +69,7 @@ public class BlockchainService
 
     public async Task<decimal> GetBalanceAsync(string sensorId)
     {
-        // Jeśli kontraktu nie ma, zwracamy 0, żeby nie sypać błędami na froncie
+        // If the contract is not ready, return 0 to avoid errors on the frontend
         if (!_isContractReady) return 0;
 
         try 
@@ -82,17 +83,17 @@ public class BlockchainService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning($"[Blockchain] Błąd odczytu salda dla {sensorId}: {ex.Message}");
+            _logger.LogWarning($"[Blockchain] Error reading balance for {sensorId}: {ex.Message}");
             return 0;
         }
     }
 
     public async Task RewardSensorAsync(string sensorId)
     {
-        // KROK 1: Blokada, jeśli kontrakt jeszcze nie istnieje
+        // STEP 1: Block if the contract does not yet exist
         if (!_isContractReady)
         {
-            _logger.LogWarning($"[Blockchain Skip] Pominięto nagrodę dla {sensorId} - kontrakt jeszcze nie jest gotowy.");
+            _logger.LogWarning($"[Blockchain Skip] Skipped reward for {sensorId} - contract is not ready yet.");
             return;
         }
 
@@ -102,8 +103,8 @@ public class BlockchainService
         {
             await _semaphore.WaitAsync();
 
-            // Pobierz aktualny nonce z sieci, żeby uniknąć konfliktów
-            // (Nethereum robi to automatycznie, ale przy dużym obciążeniu warto mieć to na uwadze)
+            // Get the current nonce from the network to avoid conflicts
+            // (Nethereum does this automatically, but it's good to keep in mind under heavy load)
             var transferHandler = _web3.Eth.GetContractTransactionHandler<RewardSensorFunction>();
             var rewardFunction = new RewardSensorFunction()
             {
@@ -112,11 +113,11 @@ public class BlockchainService
             };
             
             var txHash = await transferHandler.SendRequestAsync(_contractAddress, rewardFunction);
-            _logger.LogInformation($"[Blockchain Reward] Wysłano 1 token do {sensorId}. Tx: {txHash}");
+            _logger.LogInformation($"[Blockchain Reward] Sent token to {sensorId}. Tx: {txHash}");
         }
         catch (Exception ex)
         {
-            _logger.LogError($"[Blockchain Error] Nie udało się nagrodzić sensora: {ex.Message}");
+            _logger.LogError($"[Blockchain Error] Failed to reward sensor: {ex.Message}");
         }
         finally
         {
