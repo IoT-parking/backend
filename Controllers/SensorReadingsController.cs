@@ -14,15 +14,18 @@ public class SensorReadingsController : ControllerBase
 {
     private readonly ISensorReadingRepository _repository;
     private readonly IExportService _exportService;
+    private readonly BlockchainService _blockchainService;
     private readonly ILogger<SensorReadingsController> _logger;
 
     public SensorReadingsController(
         ISensorReadingRepository repository,
         IExportService exportService,
+        BlockchainService blockchainService,
         ILogger<SensorReadingsController> logger)
     {
         _repository = repository;
         _exportService = exportService;
+        _blockchainService = blockchainService;
         _logger = logger;
     }
 
@@ -131,7 +134,6 @@ public class SensorReadingsController : ControllerBase
     {
         try
         {
-            // Get all data without pagination for export
             parameters.PageSize = int.MaxValue;
             parameters.PageNumber = 1;
 
@@ -261,6 +263,43 @@ public class SensorReadingsController : ControllerBase
         {
             _logger.LogError(ex, "Error deleting all readings");
             return StatusCode(500, "An error occurred while deleting readings");
+        }
+    }
+
+    /// <summary>
+    /// Gets current status, wallet address and token balance for all sensors
+    /// </summary>
+    [HttpGet("status")]
+    [ProducesResponseType(typeof(IEnumerable<SensorStatusDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<SensorStatusDto>>> GetSensorsStatus()
+    {
+        try
+        {
+            // Unique sensor IDs from the database
+            var sensorIds = await _repository.GetUniqueSensorInstancesAsync();
+
+            // For each sensor, query the Blockchain for the balance
+            var tasks = sensorIds.Select(async sensorId =>
+            {
+                var wallet = _blockchainService.GetWalletForSensor(sensorId);
+                var balance = await _blockchainService.GetBalanceAsync(sensorId);
+
+                return new SensorStatusDto
+                {
+                    SensorId = sensorId,
+                    Wallet = wallet ?? "Unknown",
+                    Tokens = balance
+                };
+            });
+
+            var result = await Task.WhenAll(tasks);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving sensor statuses");
+            return StatusCode(500, "Error communicating with blockchain or database");
         }
     }
 }
